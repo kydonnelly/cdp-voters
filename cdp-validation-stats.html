@@ -1,0 +1,175 @@
+<!-- wp:paragraph -->
+<p>{{CODEinitialize}}</p>
+<!-- /wp:paragraph -->
+
+<div id="loginInfo">
+<p>Sign in with Google to see validation stats:<br><button onclick="login_with_google()">Sign In</button></p>
+</div>
+<div id="userId">
+<p><label id="userIdLabel">Your user id is: ???</label></p>
+</div>
+
+<!-- wp:paragraph -->
+<p><div id="stats">
+<div id="statsTable"></div>
+<button name="reload" onclick="loadStats(this)">Load Stats</button>
+</div></p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>{{CODEsignin}}</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>{{CODEstats}}</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>{{CODEupdateTable}}</p>
+<!-- /wp:paragraph -->
+
+<!-- CodeEmbed CODEinitialize -->
+<script src="https://www.gstatic.com/firebasejs/7.4.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/7.4.0/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/7.4.0/firebase-database.js"></script>
+<script>
+let firebaseConfig = {
+    apiKey: "YOUR_KEY_HERE",
+    authDomain: "YOUR_APP_NAME_HERE.firebaseapp.com",
+    databaseURL: "https://YOUR_APP_NAME_HERE.firebaseio.com",
+    projectId: "YOUR_APP_NAME_HERE",
+    storageBucket: "YOUR_APP_NAME_HERE.appspot.com",
+    messagingSenderId: "YOUR_ID_HERE",
+    appId: "YOUR_APP_ID_HERE"
+  };
+firebase.initializeApp(firebaseConfig);
+</script>
+
+<!-- CODEsignin -->
+<script>
+document.getElementById("loginInfo").style.display = "none";
+document.getElementById("stats").hidden = true;
+document.getElementById("userId").hidden = true;
+
+firebase.auth().onAuthStateChanged(function(user) {
+  if (user) {
+    document.getElementById("loginInfo").style.display = "none";
+    document.getElementById("stats").hidden = false;
+    document.getElementById("userId").hidden = false;
+    document.getElementById("userIdLabel").textContent = "Your user id is " + user.uid;
+  } else {
+    document.getElementById("loginInfo").style.display = "block";
+    document.getElementById("stats").hidden = true;
+    document.getElementById("userId").hidden = true;
+  }
+});
+function login_with_google() {
+  let provider = new firebase.auth.GoogleAuthProvider();
+  firebase.auth().signInWithPopup(provider).then(function(result) {
+    var token = result.credential.accessToken;
+    var user = result.user;
+  }).catch(function(error) {
+    var errorCode = error.code;
+    var errorMessage = error.message;
+    var email = error.email;
+    var credential = error.credential;
+  });
+}
+</script>
+
+<!-- CODEstats -->
+<script>
+function loadStats(button) {
+  let userId = firebase.auth().currentUser.uid;
+  if (userId == null) {
+    return false;
+  }
+
+  button.textContent = "Loading...";
+
+  var ref = firebase.database().ref('users');
+  ref.once('value').then(function(snapshot) {
+    var validated = new Array();
+    var invalidated = new Array();
+    var duplicates = new Array();
+    var userIds = new Array();
+    snapshot.forEach(function(userSnapshot) {
+      var numValid = 0;
+      var numInvalid = 0;
+      var numDuplicate = 0;
+      userSnapshot.forEach(function(idSnapshot) {
+        var validatedVoterId = idSnapshot.key;
+        if (idSnapshot.key == 'duplicate') {
+          numDuplicate = idSnapshot.val();
+        } else if (idSnapshot.key == 'invalid') {
+          numInvalid = idSnapshot.val();
+        } else {
+          numValid++;
+        }
+      });
+      validated.push(numValid);
+      invalidated.push(numInvalid);
+      duplicates.push(numDuplicate);
+      userIds.push(userSnapshot.key);
+    });
+
+    button.textContent = "Load Stats";
+    updateTable(userIds, validated, invalidated, duplicates);
+  });
+}
+</script>
+
+<!-- CODEupdateTable -->
+<script>
+function updateTable(userIds, validated, invalidated, duplicates) {
+    var tableHtml = "<table style='width:100%'>";
+    tableHtml += "<tr>";
+    tableHtml += "<th style='text-align: center'>User</td>";
+    tableHtml += "<th style='text-align: center'>Valid</td>";
+    tableHtml += "<th style='text-align: center'>Missing</td>";
+    tableHtml += "<th style='text-align: center'>Duplicates</td>";
+    tableHtml += "<th style='text-align: center'>Total</td>";
+    tableHtml += "<th style='text-align: center'>Percentage</td>";
+    tableHtml += "</tr>";
+
+    let numUsers = userIds.length;
+    let sumValid = validated.reduce((a, b) => a + b, 0);
+    let sumInvalid = invalidated.reduce((a, b) => a + b, 0);
+    let sumDuplicates = duplicates.reduce((a, b) => a + b, 0);
+    let sumTotal = sumValid + sumInvalid + sumDuplicates;
+    let sumPercent = 100 * (sumValid + sumDuplicates) / sumTotal;
+    
+    tableHtml += "<tr>";
+    tableHtml += "<th style='text-align: center'>All " + userIds.length + " of us</td>";
+    tableHtml += "<th style='text-align: center'>" + sumValid + "</td>";
+    tableHtml += "<th style='text-align: center'>" + sumInvalid + "</td>";
+    tableHtml += "<th style='text-align: center'>" + sumDuplicates + "</td>";
+    tableHtml += "<th style='text-align: center'>" + sumTotal + "</td>";
+    tableHtml += "<th style='text-align: center'>" + sumPercent.toFixed(2) + "%</td>";
+    tableHtml += "</tr>";
+
+    for (var i = 0; i < numUsers; i++) {
+      let numValid = validated[i];
+      let numInvalid = invalidated[i];
+      let numDuplicate = duplicates[i];
+      let sumAll = numValid + numInvalid + numDuplicate;
+      let percent = 100 * (numValid + numDuplicate) / sumAll;
+
+      tableHtml += "<tr>";
+      tableHtml += "<td style='text-align: center'>" + userIds[i] + "</td>";
+      tableHtml += "<td style='text-align: center'>" + numValid + "</td>";
+      tableHtml += "<td style='text-align: center'>" + numInvalid + "</td>";
+      tableHtml += "<td style='text-align: center'>" + numDuplicate + "</td>";
+      tableHtml += "<td style='text-align: center'>" + sumAll + "</td>";
+      tableHtml += "<td style='text-align: center'>" + percent.toFixed(2) + "%</td>";
+      tableHtml += "</tr>";
+    }
+
+    tableHtml += "</table>";
+
+    document.getElementById("statsTable").innerHTML = tableHtml;
+
+    return false;
+}
+
+</script>

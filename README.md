@@ -19,9 +19,11 @@ Import the purchased database into your web host's MySQL database.
 
 Add cdp-voters to your server's wp-content/plugin directory and activate it from WordPress plugins.
 
-Copy/Paste the top of the html file into your WordPress page using Code Editor.
+Copy/Paste the top of cdp-voters.html into your WordPress validation page using Code Editor.
 
-Copy/Paste the javascript functions into the Code Embed area in your WordPress page.
+Copy/Paste the top of cdp-validation-stats.html into your WordPress stats page using Code Editor.
+
+Copy/Paste the javascript functions into the Code Embed area of the WordPress pages.
 
 ## Screenshots
 A single result when searching the database with a specific address. If the name matches you can mark it valid, or mark invalid if it's the wrong person.
@@ -31,6 +33,10 @@ A single result when searching the database with a specific address. If the name
 Multiple results when searching for a specific first name with pattern matching in the street name.
 
 ![Image of pattern validation result](https://cooperative4thecommunity.com/wp-content/uploads/2020/02/partial_search.png)
+
+Validation Stats page showing how many people have been marked valid/invalid/duplicate.
+
+![Image of validation stats page](https://cooperative4thecommunity.com/wp-content/uploads/2020/02/validation_stats.png)
 
 ## Acknowledgements
 Neil and Victoria for doing all the paperwork to buy the Oakland voter database.
