@@ -1,0 +1,197 @@
+<!-- wp:paragraph -->
+<p>{{CODEsetup}}</p>
+<!-- /wp:paragraph -->
+
+<div id="loginInfo">
+<p>Sign in with Google to start validating signatures:<br><button onclick="login_with_google()">Sign In</button></p>
+</div>
+<p>Welcome to the C4C signature validating page! Fill in any fields you have information for. Use a single '?' for any unreadable characters.</p>
+
+<!-- wp:paragraph -->
+<p>[cdp_voter_form]</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>{{CODEsignin}}</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>{{CODEreset}}</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>{{CODEquery}}</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>{{CODEinvalidate}}</p>
+<!-- /wp:paragraph -->
+
+<!-- CodeEmbed CODEsetup -->
+<script src="https://www.gstatic.com/firebasejs/7.4.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/7.4.0/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/7.4.0/firebase-database.js"></script>
+<script>
+let firebaseConfig = {
+    apiKey: "YOUR_KEY_HERE",
+    authDomain: "YOUR_APP_NAME_HERE.firebaseapp.com",
+    databaseURL: "https://YOUR_APP_NAME_HERE.firebaseio.com",
+    projectId: "YOUR_APP_NAME_HERE",
+    storageBucket: "YOUR_APP_NAME_HERE.appspot.com",
+    messagingSenderId: "YOUR_ID_HERE",
+    appId: "YOUR_APP_ID_HERE"
+  };
+firebase.initializeApp(firebaseConfig);
+</script>
+
+<!-- CodeEmbed CODEinvalidate -->
+<script>
+function invalidateSearch(button) {
+  var userId = firebase.auth().currentUser.uid;
+  if (userId == null) {
+    return false;
+  }
+
+  let ref = firebase.database().ref('users/' + userId + '/invalid');
+  ref.once('value').then(function(snapshot) {
+    var numInvalid = snapshot.val() != null ? snapshot.val() : 0;
+    numInvalid = numInvalid + 1;
+    firebase.database().ref('users/' + userId + '/invalid').set(numInvalid, function(error) {
+        if (error) {
+          button.textContent = "Error";
+        } else {
+          button.textContent = "Marked Invalid";
+        }
+
+        var form = document.getElementById('voter_form');
+        resetForm(form);
+    });
+  });
+}
+</script>
+
+<!-- CodeEmbed CODEquery -->
+<script>
+function validateId(button) {
+  let voter_id = button.id;
+  let userId = firebase.auth().currentUser.uid;
+  if (voter_id == null || userId == null) {
+    return false;
+  }
+
+  if (button.textContent == "Marked!") {
+    button.textContent = "Unmarking...";
+    unmarkVoterId(button, userId, voter_id);
+  } else {
+    button.textContent = "Marking...";
+    markVoterId(button, userId, voter_id);
+  }
+}
+
+function unmarkVoterId(button, userId, voter_id) {
+  firebase.database().ref('users/' + userId + '/' + voter_id).remove(function(error) {
+    if (error) {
+      button.textContent = "Error";
+    } else {
+      button.textContent = "Unmarked!";
+    }
+    let form = document.getElementById('voter_form');
+    resetForm(form);
+  });
+}
+
+function markDuplicate(button, userId) {
+  let ref = firebase.database().ref('users/' + userId + '/duplicate');
+  ref.once('value').then(function(snapshot) {
+    var numDuplicate = snapshot.val() != null ? snapshot.val() : 0;
+    numDuplicate = numDuplicate + 1;
+    firebase.database().ref('users/' + userId + '/duplicate').set(numDuplicate, function(error) {
+      button.textContent = "Duplicate!";
+      let form = document.getElementById('voter_form');
+      resetForm(form);
+    });
+  });
+}
+
+function markVoterId(button, userId, voter_id) {
+  let ref = firebase.database().ref('users');
+  var foundMatch = false;
+  ref.once('value').then(function(snapshot) {
+    snapshot.forEach(function(childSnapshot) {
+      childSnapshot.forEach(function(idSnapshot) {
+        let validatedVoterId = idSnapshot.key;
+        if (validatedVoterId == voter_id) {
+          foundMatch = true;
+          return;
+        }
+      });
+      if (foundMatch) return;
+    });
+
+    if (foundMatch) {
+      markDuplicate(button, userId);
+    } else {
+      firebase.database().ref('users/' + userId + '/' + voter_id).set(1, function(error) {
+        if (error) {
+          button.textContent = "Error";
+        } else {
+          button.textContent = "Marked!";
+        }
+        var form = document.getElementById('voter_form');
+        resetForm(form);
+      });
+    }
+  });
+}
+</script>
+
+<!-- CodeEmbed CODEreset -->
+<script>
+function resetForm(form) {
+  var inputs = form.getElementsByTagName('input');
+  for (var i = 0; i<inputs.length; i++) {
+    switch (inputs[i].type) {
+      case 'text':
+        inputs[i].value = '';
+        break;
+    }
+  }
+
+  resetFormSelection();
+
+  return false;
+}
+
+function resetFormSelection() {
+  let firstNameField = document.getElementById('first');
+  firstNameField.select();
+}
+</script>
+
+<!-- CodeEmbed CODEsignin -->
+<script>
+document.getElementById("loginInfo").style.display = "none";
+document.getElementById("submitButton").hidden = true;
+
+firebase.auth().onAuthStateChanged(function(user) {
+  if (user) {
+    document.getElementById("loginInfo").style.display = "none";
+    document.getElementById("submitButton").hidden = false;
+  } else {
+    document.getElementById("loginInfo").style.display = "block";
+    document.getElementById("submitButton").hidden = true;
+  }
+});
+function login_with_google() {
+  let provider = new firebase.auth.GoogleAuthProvider();
+  firebase.auth().signInWithPopup(provider).then(function(result) {
+    var token = result.credential.accessToken;
+    var user = result.user;
+  }).catch(function(error) {
+    var errorCode = error.code;
+    var errorMessage = error.message;
+    var email = error.email;
+    var credential = error.credential;
+  });
+}
+</script>
