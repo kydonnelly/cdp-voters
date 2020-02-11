@@ -62,7 +62,7 @@ function cdp_voter_lookup() {
 
   // the database is not consistently specific eg 94610 vs 94610-3343, so always match both
   if ($zip != null) {
-    $zip = $zip . '?';
+    $zip = $zip . USER_WILDCARD;
   }
 
   // get the list of fields they are filtering by
